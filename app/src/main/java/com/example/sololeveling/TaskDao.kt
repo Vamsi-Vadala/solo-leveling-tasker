@@ -1,4 +1,4 @@
-package com.example.sololeveling.database
+package com.example.sololeveling
 
 import androidx.room.*
 import com.example.sololeveling.model.Task

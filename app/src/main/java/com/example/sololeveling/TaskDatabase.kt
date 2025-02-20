@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.sololeveling.database.TaskDao
 import com.example.sololeveling.model.Task
 
 @Database(entities = [Task::class], version = 1)

@@ -1,5 +1,6 @@
 package com.example.sololeveling
 
+import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,6 +24,7 @@ import com.example.sololeveling.model.Task
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
@@ -33,7 +35,24 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
 import android.os.PowerManager
 import android.net.Uri
-
+import android.net.VpnService
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat.startForeground
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.icu.util.Calendar
+import androidx.compose.material.icons.Icons
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.LightMode
 
 
 class MainActivity : ComponentActivity() {
@@ -42,56 +61,103 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         if (!hasUsageAccessPermission(this)) {
-            requestUsageAccessPermission(this) // Redirects user to settings
+            requestUsageAccessPermission(this)
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(Intent(this, AppMonitorService::class.java))
-        } else {
-            startService(Intent(this, AppMonitorService::class.java))
+        if (!hasNotificationPermission(this)) {
+            requestNotificationPermission(this)
         }
 
         setContent {
-            AppNavigation()
+            val themeViewModel: ThemeViewModel = viewModel()
+            val isDarkTheme by themeViewModel.isDarkTheme.collectAsState(initial = false)
+
+            MaterialTheme(colorScheme = if (isDarkTheme) darkColorScheme() else lightColorScheme()) {
+                val snackbarHostState = remember { SnackbarHostState() }
+                val viewModel: TaskViewModel = viewModel()
+
+                // Observe Snackbar messages from ViewModel
+                LaunchedEffect(viewModel.snackbarMessage) {
+                    viewModel.snackbarMessage.collect { message ->
+                        snackbarHostState.showSnackbar(message)
+                    }
+                }
+
+
+                AppNavigation(snackbarHostState, viewModel, themeViewModel)
+            }
         }
+        scheduleTaskCheckWorker(this)
     }
+
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onResume() {
         super.onResume()
 
         if (hasUsageAccessPermission(this)) {
-            startService(Intent(this, AppMonitorService::class.java))
             setContent {
-                AppNavigation()
+                val themeViewModel: ThemeViewModel = viewModel()
+                val isDarkTheme by themeViewModel.isDarkTheme.collectAsState(initial = false)
+
+                MaterialTheme(colorScheme = if (isDarkTheme) darkColorScheme() else lightColorScheme()) {
+
+                    val snackbarHostState = remember { SnackbarHostState() }
+                    val viewModel: TaskViewModel = viewModel()
+
+                    LaunchedEffect(viewModel.snackbarMessage) {
+                        viewModel.snackbarMessage.collect { message ->
+                            snackbarHostState.showSnackbar(message)
+                        }
+                    }
+
+                    AppNavigation(snackbarHostState, viewModel,themeViewModel)
+                }
             }
         } else {
             requestUsageAccessPermission(this)
         }
+        scheduleTaskCheckWorker(this)
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppNavigation() {
+fun AppNavigation(snackbarHostState: SnackbarHostState, viewModel: TaskViewModel, themeViewModel: ThemeViewModel) {
     val navController = rememberNavController()
+    val isDarkTheme by themeViewModel.isDarkTheme.collectAsState(initial = false)
 
     Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Task & App Lock Manager") })
+        topBar = { TopAppBar(title = { Text("Task & App Lock Manager") }) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { themeViewModel.toggleTheme() }
+            ) {
+                Icon(
+                    imageVector = if (isDarkTheme) Icons.Rounded.DarkMode else Icons.Rounded.LightMode,
+                    contentDescription = "Toggle Theme"
+                )
+            }
         }
     ) { padding ->
         NavHost(navController, startDestination = "tasks", modifier = Modifier.padding(padding)) {
-            composable("tasks") { WeeklyTaskPlannerApp(navController) }
-            composable("app_lock") { AppLockScreen(navController) }
+            composable("tasks") { WeeklyTaskPlannerApp(navController, viewModel, snackbarHostState) }
+            composable("block_apps") { BlockAppsScreen(navController, LocalContext.current) }
         }
     }
 }
 
-@Composable
-fun WeeklyTaskPlannerApp(navController: NavController,viewModel: TaskViewModel = viewModel()) {
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-//        val gradientColors = listOf(Cyan, Green, Red /*...*/)
 
+
+
+@Composable
+fun WeeklyTaskPlannerApp(
+    navController: NavController,
+    viewModel: TaskViewModel,
+    snackbarHostState: SnackbarHostState
+) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
             text = "Weekly Tasks",
             style = MaterialTheme.typography.headlineMedium,
@@ -101,22 +167,20 @@ fun WeeklyTaskPlannerApp(navController: NavController,viewModel: TaskViewModel =
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Day Selection Row
         DaySelector(viewModel)
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Task List for Selected Day
-        TaskList(viewModel)
+        TaskList(viewModel, snackbarHostState)
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Navigate to App Lock Screen
-        Button(onClick = { navController.navigate("app_lock") }) {
-            Text("Go to App Lock Manager")
+        Button(onClick = { navController.navigate("block_apps") }) {
+            Text("Go to VPN")
         }
     }
 }
+
 
 @Composable
 fun DaySelector(viewModel: TaskViewModel) {
@@ -139,21 +203,23 @@ fun DaySelector(viewModel: TaskViewModel) {
 }
 
 @Composable
-fun TaskList(viewModel: TaskViewModel) {
+fun TaskList(viewModel: TaskViewModel, snackbarHostState: SnackbarHostState) {
     val tasks by viewModel.tasks
 
     LazyColumn {
         items(tasks) { task ->
-            TaskItem(task = task, onToggle = { viewModel.toggleTask(task) })
+            TaskItem(task, { viewModel.toggleTask(task) }, snackbarHostState)
         }
     }
 }
 
+
 @Composable
-fun TaskItem(task: Task, onToggle: () -> Unit) {
+fun TaskItem(task: Task, onToggle: () -> Unit, snackbarHostState: SnackbarHostState) {
+    val accentColor = Color(0xFF1E90FF)
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = if (task.isChecked) Color.LightGray else Color.White)
+        colors = CardDefaults.cardColors(containerColor = if (task.isChecked) Color.hsl(180f, 0.6f, 0.5f)   else accentColor)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -171,6 +237,7 @@ fun TaskItem(task: Task, onToggle: () -> Unit) {
         }
     }
 }
+
 
 
 @RequiresApi(Build.VERSION_CODES.Q)
@@ -195,11 +262,51 @@ fun requestUsageAccessPermission(context: Context) {
     context.startActivity(intent) // Opens system settings for the user to enable the permission
 }
 
-fun disableBatteryOptimization(context: Context) {
-    val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-    if (!powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
-        val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-        intent.data = Uri.parse("package:${context.packageName}")
-        context.startActivity(intent)
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+fun requestNotificationPermission(activity: Activity) {
+    if (ContextCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS)
+        != PackageManager.PERMISSION_GRANTED) {
+        ActivityCompat.requestPermissions(
+            activity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 100
+        )
     }
 }
+
+fun hasNotificationPermission(context: Context): Boolean {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        ContextCompat.checkSelfPermission(
+            context, Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+    } else {
+        true // No need to request permission below Android 13
+    }
+}
+
+fun scheduleTaskCheckWorker(context: Context) {
+    val customHour = 0 // 🔹 Change this to your desired hour (24-hour format)
+    val customMinute = 1 // 🔹 Change this to your desired minute
+
+    val calendar = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, customHour)
+        set(Calendar.MINUTE, customMinute)
+        set(Calendar.SECOND, 0)
+    }
+
+    val now = Calendar.getInstance()
+    var delay = calendar.timeInMillis - now.timeInMillis
+    if (delay < 0) {
+        delay += TimeUnit.DAYS.toMillis(1) // Schedule for the next day if time has passed
+    }
+
+
+    val workRequest = OneTimeWorkRequestBuilder<TaskCheckWorker>()
+        .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+        .build()
+
+    WorkManager.getInstance(context).enqueueUniqueWork(
+        "TaskCheckWorker",
+        ExistingWorkPolicy.REPLACE,
+        workRequest
+    )
+}
+

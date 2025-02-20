@@ -1,6 +1,7 @@
 package com.example.sololeveling
 
 import android.app.Application
+import android.widget.Toast
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,6 +14,8 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 class TaskViewModel(application: Application) : AndroidViewModel(application) {
     private val taskDao = TaskDatabase.getDatabase(application).taskDao()
@@ -22,9 +25,13 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     private var _tasks = mutableStateOf<List<Task>>(emptyList())
     val tasks: State<List<Task>> get() = _tasks
 
+    // 🔹 Create a shared flow to send messages to the UI
+    private val _snackbarMessage = MutableSharedFlow<String>()
+    val snackbarMessage = _snackbarMessage.asSharedFlow()
+
     init {
         viewModelScope.launch {
-            insertDefaultTasks()  // ✅ Insert tasks on first launch
+            insertDefaultTasks()
             loadTasksForDay(selectedDay)
         }
     }
@@ -44,9 +51,16 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun toggleTask(task: Task) {
-        viewModelScope.launch {
-            taskDao.updateTask(task.copy(isChecked = !task.isChecked))
-            loadTasksForDay(selectedDay)
+        if (selectedDay == getCurrentDay()) {
+            viewModelScope.launch {
+                taskDao.updateTask(task.copy(isChecked = !task.isChecked))
+                loadTasksForDay(selectedDay)
+            }
+        } else {
+            // 🔹 Emit a message when the user tries to edit a task for another day
+            viewModelScope.launch {
+                _snackbarMessage.emit("You can only edit tasks for today!")
+            }
         }
     }
 
