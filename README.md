@@ -46,6 +46,8 @@ This app is designed to help users dedicate their time productively to important
 - The app currently **does not verify** actual task completion; it relies on the user’s honesty.
 - Future updates will enhance enforcement to prevent easy bypassing.
 
+## License
+This project is open-source and distributed under the [MIT License](LICENSE).
 
 ## Feedback & Contributions
 We welcome feedback and contributions! If you encounter any issues or have feature suggestions, feel free to open an issue or submit a pull request.
