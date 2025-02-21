@@ -1,4 +1,4 @@
-# Productivity App - Beta Release
+# Level-Up Tasker - Beta Release
 
 ## Overview
 This app is designed to help users dedicate their time productively to important tasks rather than scrolling through social media. The concept is inspired by *Solo Leveling*, where failure to complete tasks results in restricted access to selected apps. While the app cannot yet verify task completion, it relies on user integrity. Users can bypass the restriction by uninstalling or force stopping the app, but future updates aim to enhance enforcement.
@@ -53,4 +53,6 @@ This project is open-source and distributed under the [MIT License](LICENSE).
 We welcome feedback and contributions! If you encounter any issues or have feature suggestions, feel free to open an issue or submit a pull request.
 
 ---
+*This project is inspired by the themes of productivity and self-improvement. It is not affiliated with, endorsed by, or associated with the Solo Leveling franchise.*
+
 *This is an early beta release, and many features are still under development. Your feedback is valuable for refining and improving the app!*
