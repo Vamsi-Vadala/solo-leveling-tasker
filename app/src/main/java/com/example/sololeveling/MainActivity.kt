@@ -43,6 +43,7 @@ import androidx.core.app.ServiceCompat.startForeground
 import androidx.core.content.ContextCompat
 import android.Manifest
 import android.icu.util.Calendar
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -128,11 +129,13 @@ fun AppNavigation(snackbarHostState: SnackbarHostState, viewModel: TaskViewModel
     val isDarkTheme by themeViewModel.isDarkTheme.collectAsState(initial = false)
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Task & App Lock Manager") }) },
+        topBar = { TopAppBar(title = { Text("Solo Leveling Tasker") }) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { themeViewModel.toggleTheme() }
+                onClick = { themeViewModel.toggleTheme() },
+                containerColor = Color(0xFFDDEB9B),
+                contentColor = Color(0xFF143D60)
             ) {
                 Icon(
                     imageVector = if (isDarkTheme) Icons.Rounded.DarkMode else Icons.Rounded.LightMode,
@@ -175,8 +178,15 @@ fun WeeklyTaskPlannerApp(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = { navController.navigate("block_apps") }) {
-            Text("Go to VPN")
+        Button(
+            onClick = { navController.navigate("block_apps") },
+            colors = ButtonDefaults.buttonColors(
+                containerColor =  Color(0xFFDDEB9B),
+                contentColor = Color(0xFF143D60)
+            )
+        )
+        {
+            Text("Select Apps to Block")
         }
     }
 }
@@ -185,14 +195,28 @@ fun WeeklyTaskPlannerApp(
 @Composable
 fun DaySelector(viewModel: TaskViewModel) {
     val daysOfWeek = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+    val accentColor = Color(0x97143D60)
+    val finishedColor = Color(0x9FA0C878)
 
-    LazyRow(modifier = Modifier.fillMaxWidth()) {
+
+    val lazyListState = rememberLazyListState()
+    val currentDayIndex = daysOfWeek.indexOf(viewModel.selectedDay)
+
+    // Scroll to the current day when the component loads
+    LaunchedEffect(currentDayIndex) {
+        if (currentDayIndex != -1) {
+            lazyListState.animateScrollToItem(currentDayIndex)
+        }
+    }
+    LazyRow(
+        state = lazyListState,
+        modifier = Modifier.fillMaxWidth()) {
         items(daysOfWeek) { day ->
             val isSelected = viewModel.selectedDay == day
             Button(
                 onClick = { viewModel.setDay(day) },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSelected) Color.Blue else Color.Gray
+                    containerColor = if (isSelected) finishedColor else accentColor
                 ),
                 modifier = Modifier.padding(4.dp)
             ) {
@@ -216,10 +240,11 @@ fun TaskList(viewModel: TaskViewModel, snackbarHostState: SnackbarHostState) {
 
 @Composable
 fun TaskItem(task: Task, onToggle: () -> Unit, snackbarHostState: SnackbarHostState) {
-    val accentColor = Color(0xFF1E90FF)
+    val accentColor = Color(0x97143D60)
+    val finishedColor = Color(0x9FA0C878)
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = if (task.isChecked) Color.hsl(180f, 0.6f, 0.5f)   else accentColor)
+        colors = CardDefaults.cardColors(containerColor = if (task.isChecked) finishedColor   else accentColor)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),

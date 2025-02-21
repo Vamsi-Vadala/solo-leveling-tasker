@@ -19,7 +19,7 @@ class MyVpnService : VpnService() {
 
         if (intent?.action == "FORCE_STOP_VPN") {
             Log.d("VPN", "Received FORCE_STOP_VPN intent")
-            stopVPN() // 🔥 Now this will explicitly be called
+            stopVPN()
             return START_NOT_STICKY
         }
 

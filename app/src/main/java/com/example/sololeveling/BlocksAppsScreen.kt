@@ -12,6 +12,7 @@ import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.net.VpnService
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -28,12 +29,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -54,8 +63,10 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlockAppsScreen(navController: NavController, context: Context) {
+
     val packageManager = context.packageManager
     val sharedPreferences = context.getSharedPreferences("BlockedApps", Context.MODE_PRIVATE)
 
@@ -78,25 +89,40 @@ fun BlockAppsScreen(navController: NavController, context: Context) {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Block Internet Access for Apps", fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
-        // Search Bar
-        TextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            label = { Text("Search apps...") },
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            singleLine = true
-        )
-
-        Button(onClick = { navController.navigateUp() }, modifier = Modifier.padding(top = 8.dp)) {
-            Text("Back")
+    // Use Scaffold to include a TopAppBar
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Block Internet Access") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
         }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+        ) {
+            // Search Bar
+            TextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Search apps...") },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                singleLine = true
+            )
 
-        Button(onClick = { requestVpnPermission(context) }) {
-            Text("Start VPN Service")
-        }
+            Spacer(modifier = Modifier.height(16.dp))
+
+//        Button(onClick = { requestVpnPermission(context) }) {
+//            Text("Start VPN Service")
+//        }
 
 //        Button(onClick = { stopVpnService(context) }, colors = ButtonDefaults.buttonColors(Color.Red)) {
 //            Text("Stop VPN")
@@ -110,7 +136,7 @@ fun BlockAppsScreen(navController: NavController, context: Context) {
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator() // 🔹 Show loading spinner
+                CircularProgressIndicator() // Show loading spinner
             }
         } else {
             // 🔹 Show the filtered app list when loading is done
@@ -123,6 +149,7 @@ fun BlockAppsScreen(navController: NavController, context: Context) {
         }
     }
 }
+}
 
 
 @Composable
@@ -134,7 +161,7 @@ fun AppItem(appInfo: ApplicationInfo, packageManager: PackageManager, sharedPref
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .background(Color.LightGray, shape = RoundedCornerShape(8.dp))
+            .background(Color(0xFF143D60), shape = RoundedCornerShape(8.dp))
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
