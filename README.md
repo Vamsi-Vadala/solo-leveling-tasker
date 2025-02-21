@@ -37,7 +37,7 @@ This app is designed to help users dedicate their time productively to important
 - **Adaptive "System" Integration**: Introducing a structured system based on user preferences and fields of interest.
 
 ## Installation Guide
-1. Download the latest APK from the [Releases](#) section.
+1. Download the latest APK from the [Releases](https://github.com/Vamsi-Vadala/solo-leveling-tasker/releases/tag/v0.1.0-preview) section.
 2. Install the APK on your Android device (ensure "Install from Unknown Sources" is enabled).
 3. Open the app and configure your task and app restriction settings.
 
